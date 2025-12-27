@@ -292,9 +292,6 @@ int main(void)
 	int rows = 100;
 	int cols = 100;
 	
-	Vector3 pSize = (Vector3){ .x = player.size.x * 0.7f, .y = player.size.y, .z = player.size.x * 0.7f };
-	player.body = createRigidBody(RIGID, player.position, pSize);
-
 	Grid *grid = createGrid(cols, rows, CELL_SIZE);
 	TileGrid *tileGrid = createTileGrid(cols, rows);
 	Image tileImage1 = LoadImage("res/snowygrass1.png");
@@ -405,7 +402,10 @@ int main(void)
 
 	Shader canvasShader = LoadShader("res/shaders/light.vs", "res/shaders/test.fs");
 	SetShaderValue(canvasShader, GetShaderLocation(canvasShader, "resolution"), &resolution, SHADER_UNIFORM_VEC2);
-	
+	// player	
+	Vector3 pSize = (Vector3){ .x = player.size.x * 0.7f, .y = player.size.y, .z = player.size.x * 0.7f };
+	player.body = createRigidBody(RIGID, player.position, pSize);
+
 	// loading obj model
 	Model bridge = LoadModel("res/objs/bridge.obj");
 	Material *bridgeMaterial = LoadMaterials("res/objs/bridge.mtl", &bridge.materialCount);
@@ -452,7 +452,7 @@ int main(void)
 		}
 	}
 	// Christmas snowflakes
-	int flakes = 5000;
+	int flakes = 0;
 	Entity *snow = malloc(sizeof(*snow)*flakes);
 	Vector3 *dirs = malloc(sizeof(*dirs)*flakes) ;
 	Texture2D snowTexture = LoadTexture("res/snow.png");

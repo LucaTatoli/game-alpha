@@ -67,11 +67,11 @@ SATBox *createSATBox(Box *b, Vector3 pos) {
 
 	sb->s[0] = Vector3Normalize(Vector3Subtract(sb->v[1], sb->v[0]));
 	sb->s[1] = Vector3Normalize(Vector3Subtract(sb->v[3], sb->v[0]));
-	sb->s[2] = Vector3Normalize(Vector3Subtract(sb->v[4], sb->v[0]));
+	sb->s[2] = Vector3Normalize(Vector3Subtract(sb->v[0], sb->v[4]));
 
-	sb->n[0] = vectorProductNormalized(sb->s[0], sb->s[1]);
+	sb->n[0] = vectorProductNormalized(sb->s[1], sb->s[0]);
 	sb->n[1] = vectorProductNormalized(sb->s[0], sb->s[2]);
-	sb->n[2] = vectorProductNormalized(sb->s[1], sb->s[2]);
+	sb->n[2] = vectorProductNormalized(sb->s[2], sb->s[1]);
 
 	return sb;
 }
@@ -196,9 +196,8 @@ int checkOverlappingBoxAndTriangleOnAxis(SATBox *sb, Vector3 v1, Vector3 v2, Vec
 	}
 	
 	// projection of triangle vertex 1
-	float tMin; float tMax;
-	tMin = dotProduct(v1, n);
-	tMax = tMin;
+	float tMin = dotProduct(v1, n);
+	float tMax = tMin;
 	// projection of triangle vertex 2
 	temp = dotProduct(v2, n);
 	if     (temp > tMax) tMax = temp;
