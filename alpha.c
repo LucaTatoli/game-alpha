@@ -229,27 +229,28 @@ void handleInputs(AnimatedSprite *a) {
 
 	camera.position  = Vector3Add(camera.position, speedV);
 	player.position  = Vector3Add(player.position, speedV);
-	player.body->pos = Vector3Add(player.body->pos, speedV);
+	Vector3 oldPos = player.body->pos;
+	updateRigidBodyPosition(player.body, Vector3Add(player.body->pos, speedV));
 	for(int i = 0; i < TREES; i++) {
 		int collision = checkCollisionAABB(player.body, treeBody[i]);
 		if(collision == 1 && checkCollision(player.body, treeBody[i]))  {
 			camera.position  = Vector3Subtract(camera.position, speedV);
 			player.position  = Vector3Subtract(player.position, speedV);
-			player.body->pos = Vector3Subtract(player.body->pos, speedV);
+			updateRigidBodyPosition(player.body, oldPos);
 		}
 	}
 	int collision = checkCollisionAABB(player.body, bridgeBody);
 	if(collision == 1 && checkCollision(player.body, bridgeBody))  {
 		camera.position  = Vector3Subtract(camera.position, speedV);
 		player.position  = Vector3Subtract(player.position, speedV);
-		player.body->pos = Vector3Subtract(player.body->pos, speedV);
+		updateRigidBodyPosition(player.body, oldPos);
 	}
 	
 	collision = checkCollisionAABB(player.body, bridgeBody2);
 	if(collision == 1 && checkCollision(player.body, bridgeBody2))  {
 		camera.position  = Vector3Subtract(camera.position, speedV);
 		player.position  = Vector3Subtract(player.position, speedV);
-		player.body->pos = Vector3Subtract(player.body->pos, speedV);
+		updateRigidBodyPosition(player.body, oldPos);
 	}
 
 	camera.target = Vector3Add(cameraDirection, camera.position);
@@ -435,8 +436,10 @@ int main(void)
 			GetRandomValue(-cols / 2, cols/2) * CELL_SIZE	
 		};
 		treeBody[i] = createRigidBodyFromMesh(RIGID, tree.meshes, tree.meshCount, treePos[i]);
-		treePos[i].y = 0 - treeBody[i]->box.minSize.y;
-		treeBody[i]->pos.y = treePos[i].y;
+		treePos[i].y = 0 - treeBody[i]->box.v[0].y;
+		Vector3 tPos = treeBody[i]->pos;
+		tPos.y = treePos[i].y;
+		updateRigidBodyPosition(treeBody[i], tPos);
 
 		if(checkCollisionAABB(bridgeBody, treeBody[i]) || checkCollisionAABB(bridgeBody2, treeBody[i])) {
 			freeRigidBody(treeBody[i]);
