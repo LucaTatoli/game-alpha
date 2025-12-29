@@ -38,13 +38,14 @@ void main() {
 	vec3 calcLocalLightColor = localLightColor / max(dist * dist, 0.5);
 	vec3 localLightVector = localLight - fragPosition;
 	float dotProductLocalLight = dot(fragNormal, normalize(localLightVector));
-	float localLightDiff = quantize(dotProductLocalLight, 0, 1, 4);
+	int quantizeFactor = 4;
+	float localLightDiff = quantize(dotProductLocalLight, 0, 1, quantizeFactor);
 	calcLocalLightColor = calcLocalLightColor * localLightDiff;
 
 	vec4 texColor = texture(texture0, fragTexCoord);
 	
 	float dotProductLight = dot(fragNormal, normalize(lightPos));
-	float diff = quantize(dotProductLight, 0, 1, 4);
+	float diff = quantize(dotProductLight, 0, 1, quantizeFactor);
 	vec3 diffuse = diff * lightColor + (calcLocalLightColor * map(sin(time), -1, 1, 0.6, 1));
 
 	vec3 result = (ambient + diffuse) * texColor.xyz * colDiffuse.xyz * fragColor.xyz;

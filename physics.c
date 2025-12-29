@@ -145,20 +145,34 @@ int collisionSATBoxAndComplexShape(RigidBody *a, RigidBody *b) {
 				if(!checkOverlappingBoxAndTriangleOnAxis(box, v1, v2, v3, box->n[j]))
 					goto noCollisionFound;
 			
-				vN = vectorProductNormalized(box->n[j], lt1);
-				if(!checkOverlappingBoxAndTriangleOnAxis(box, v1, v2, v3, vN))
+				Vector3 vp = vectorProductNormalized(box->n[j], lt1);
+				if(!checkOverlappingBoxAndTriangleOnAxis(box, v1, v2, v3, vp))
 					goto noCollisionFound;
 			
-				vN = vectorProductNormalized(box->n[j], lt2);
-				if(!checkOverlappingBoxAndTriangleOnAxis(box, v1, v2, v3, vN))
+				vp = vectorProductNormalized(box->n[j], lt2);
+				if(!checkOverlappingBoxAndTriangleOnAxis(box, v1, v2, v3, vp))
 					goto noCollisionFound;
 			
-				vN = vectorProductNormalized(box->n[j], lt3);
-				if(!checkOverlappingBoxAndTriangleOnAxis(box, v1, v2, v3, vN))
+				vp = vectorProductNormalized(box->n[j], lt3);
+				if(!checkOverlappingBoxAndTriangleOnAxis(box, v1, v2, v3, vp))
 					goto noCollisionFound;
 			
 			}
+		
+			if(b->type == RIGID_FIXED) {
+				a->pos = Vector3Subtract(a->pos, a->vel);
+				float slope = dotProduct(vN, (Vector3){ 0, 1, 0 });
+				if(slope < 0.33f) return 1; 
 
+				float vy = dotProduct(a->vel, vN);
+				float mag = Vector3Length(a->vel);
+				a->vel.y = -vy;
+				a->vel = Vector3Normalize(a->vel);
+				a->vel.x *= mag;
+				a->vel.y *= mag;
+				a->vel.z *= mag;
+				a->pos = Vector3Add(a->pos, a->vel);
+			}
 			return 1;
 			noCollisionFound: 
 			continue;
@@ -193,9 +207,11 @@ int checkOverlappingBoxAndTriangleOnAxis(Box *b, Vector3 v1, Vector3 v2, Vector3
 }
 
 /* ============= Collision Resolution Functions =============  */
+
 Vector3 defaultCallback(RigidBody *a, RigidBody *b, Vector3 collAxis, float amount) {
 
 }
+
 /* ============= Vector Utility Functions =============  */
 
 float dotProduct(Vector3 v1, Vector3 v2) {
@@ -214,3 +230,8 @@ Vector3 vectorProductNormalized(Vector3 v1, Vector3 v2) {
 	return Vector3Normalize(vectorProduct(v1, v2));
 }
 
+/* ============= Other Utility Functions =============  */
+
+float map(float value, float min, float max, float nMin, float nMax) {
+  return nMin + (value - min) * (nMax - nMin) / (max - min);
+}

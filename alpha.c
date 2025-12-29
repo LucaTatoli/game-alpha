@@ -10,6 +10,7 @@
 #define WINDOW_TITLE "Alpha"
 #define CELL_SIZE 0.25f
 #define TREES 30
+#define GRAVITY 4
 
 typedef struct Tile {
 	Vector3 position;
@@ -200,13 +201,15 @@ RigidBody *bridgeBody2;
 RigidBody *treeBody[TREES];
 
 void handleInputs(AnimatedSprite *a) {
-	float speed = cameraSpeed * GetFrameTime();
+	float frameTime = GetFrameTime();
+	float speed = cameraSpeed * frameTime;
 
 	Vector3 speedV = (Vector3) { .x = .0f, .y = .0f, .z = .0f };
 	if(IsKeyDown(KEY_LEFT_SHIFT)) {
-		speed = sprintSpeed * GetFrameTime();
-		a->frameTimer += GetFrameTime();
+		speed = sprintSpeed * frameTime;
+		a->frameTimer += frameTime;
 	}
+	player.body->vel = speedV;
 	if(IsKeyDown(KEY_W)) {
 		speedV.z  = -speed;
 		switchAnimationType(a, WALK_U_ANIM);
@@ -227,32 +230,56 @@ void handleInputs(AnimatedSprite *a) {
 		switchAnimationType(a, a->currAnimation - 4); // each walk animation is idle animation + 4
 	}
 
+	player.body->vel = speedV;
 	camera.position  = Vector3Add(camera.position, speedV);
 	player.position  = Vector3Add(player.position, speedV);
 	Vector3 oldPos = player.body->pos;
 	updateRigidBodyPosition(player.body, Vector3Add(player.body->pos, speedV));
+	int hasCollided = 0;
 	for(int i = 0; i < TREES; i++) {
 		int collision = checkCollisionAABB(player.body, treeBody[i]);
 		if(collision == 1 && checkCollision(player.body, treeBody[i]))  {
-			camera.position  = Vector3Subtract(camera.position, speedV);
-			player.position  = Vector3Subtract(player.position, speedV);
-			updateRigidBodyPosition(player.body, oldPos);
+			//camera.position  = Vector3Subtract(camera.position, speedV);
+			//player.position  = Vector3Subtract(player.position, speedV);
+			//updateRigidBodyPosition(player.body, oldPos);
+			Vector3 diffPos = Vector3Subtract(player.body->pos, player.position);
+			camera.position = Vector3Add(camera.position, diffPos);
+			player.position = player.body->pos;
+			hasCollided = 1;
+			
 		}
 	}
 	int collision = checkCollisionAABB(player.body, bridgeBody);
 	if(collision == 1 && checkCollision(player.body, bridgeBody))  {
-		camera.position  = Vector3Subtract(camera.position, speedV);
-		player.position  = Vector3Subtract(player.position, speedV);
-		updateRigidBodyPosition(player.body, oldPos);
+		//camera.position  = Vector3Subtract(camera.position, speedV);
+		//player.position  = Vector3Subtract(player.position, speedV);
+		//updateRigidBodyPosition(player.body, oldPos);
+		Vector3 diffPos = Vector3Subtract(player.body->pos, player.position);
+		camera.position = Vector3Add(camera.position, diffPos);
+		player.position = player.body->pos;
+		hasCollided = 1;
 	}
 	
 	collision = checkCollisionAABB(player.body, bridgeBody2);
 	if(collision == 1 && checkCollision(player.body, bridgeBody2))  {
-		camera.position  = Vector3Subtract(camera.position, speedV);
-		player.position  = Vector3Subtract(player.position, speedV);
-		updateRigidBodyPosition(player.body, oldPos);
+		//camera.position  = Vector3Subtract(camera.position, speedV);
+		//player.position  = Vector3Subtract(player.position, speedV);
+		//updateRigidBodyPosition(player.body, oldPos);
+		Vector3 diffPos = Vector3Subtract(player.body->pos, player.position);
+		camera.position = Vector3Add(camera.position, diffPos);
+		player.position = player.body->pos;
+		hasCollided = 1;
 	}
 
+	if(!hasCollided) {
+		// update player position by graviy
+		float nPlayerY = fmax(player.position.y - GRAVITY * frameTime, 0.15f);
+		float diff = player.position.y - nPlayerY;
+		camera.position.y -= diff; 
+		player.position.y = nPlayerY;
+		updateRigidBodyPosition(player.body, player.position);
+		
+	}
 	camera.target = Vector3Add(cameraDirection, camera.position);
 	
 	if(IsKeyPressed(KEY_F1)) ToggleFullscreen();
@@ -358,8 +385,8 @@ int main(void)
 	//Vector3 lightColor      = (Vector3) { 0, 0, 0 };
 	Vector3 lightColor      = (Vector3) { 0.3f, 0.3f, 0.3f };
 	Vector3 ambient         = (Vector3) { 0.5f, 0.5f, 0.5f };
-	//Vector3 localLightColor = (Vector3) { 0, 0, 0 };
-	Vector3 localLightColor = (Vector3) { 0.3f, 0.3f, 0.3f };
+	Vector3 localLightColor = (Vector3) { 0, 0, 0 };
+	//Vector3 localLightColor = (Vector3) { 0.3f, 0.3f, 0.3f };
 
 	Sprite *sprite = createSprite("res/glass_sheet.png", 42);
 	AnimationConfig *config = parseAnimationConfig("configs.csv");
@@ -415,15 +442,15 @@ int main(void)
 	Texture bridgeTexture = LoadTexture("res/objs/stone.jpg");
 	bridge.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = bridgeTexture;
 	Vector3 bridgePos = (Vector3){ 0, 0.88f, -4.0f };
-	bridgeBody = createRigidBodyFromMesh(RIGID, bridge.meshes, bridge.meshCount, bridgePos);
+	bridgeBody = createRigidBodyFromMesh(RIGID_FIXED, bridge.meshes, bridge.meshCount, bridgePos);
 	
 	Model bridge2 = LoadModel("res/objs/bridge2.obj");
 	Material *bridgeMaterial2 = LoadMaterials("res/objs/bridge2.mtl", &bridge2.materialCount);
 	bridge2.materials[0] = bridgeMaterial2[0];
 	bridge2.materials[0].shader = lightFSShader;
 	bridge2.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = bridgeTexture;
-	Vector3 bridgePos2 = (Vector3){ -2.0f, 1.38f, -9.0f };
-	bridgeBody2 = createRigidBodyFromMesh(RIGID, bridge2.meshes, bridge2.meshCount, bridgePos2);
+	Vector3 bridgePos2 = (Vector3){ -2.0f, 1.30f, -9.0f };
+	bridgeBody2 = createRigidBodyFromMesh(RIGID_FIXED, bridge2.meshes, bridge2.meshCount, bridgePos2);
 	
 	Model tree= LoadModel("res/objs/tree.obj");
 	printf("Model loaded\n");
@@ -435,7 +462,7 @@ int main(void)
 			0,
 			GetRandomValue(-cols / 2, cols/2) * CELL_SIZE	
 		};
-		treeBody[i] = createRigidBodyFromMesh(RIGID, tree.meshes, tree.meshCount, treePos[i]);
+		treeBody[i] = createRigidBodyFromMesh(RIGID_FIXED, tree.meshes, tree.meshCount, treePos[i]);
 		treePos[i].y = 0 - treeBody[i]->box.v[0].y;
 		Vector3 tPos = treeBody[i]->pos;
 		tPos.y = treePos[i].y;
@@ -455,7 +482,7 @@ int main(void)
 		}
 	}
 	// Christmas snowflakes
-	int flakes = 0;
+	int flakes = 4000;
 	Entity *snow = malloc(sizeof(*snow)*flakes);
 	Vector3 *dirs = malloc(sizeof(*dirs)*flakes) ;
 	Texture2D snowTexture = LoadTexture("res/snow.png");
@@ -544,8 +571,8 @@ int main(void)
 
 		handleInputs(aSprite);
 
-		// update snowflakes
 		float frameTime = GetFrameTime();
+		// update snowflakes
 		for(int i = 0; i < flakes; i++) {
 			snow[i].position.x += dirs[i].x * frameTime;	
 			snow[i].position.y += dirs[i].y * frameTime;	

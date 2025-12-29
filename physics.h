@@ -25,6 +25,7 @@ typedef struct Box {
 typedef struct RigidBody {
 	BodyType type;
 	Vector3 pos;
+	Vector3 vel;
 	Box box;
 	Mesh *mesh;
 	int meshCount;
@@ -86,4 +87,10 @@ Vector3 vectorProductNormalized(Vector3 v1, Vector3 v2);
 
 /* Calculates the dot product between 'v1' and 'v2' */
 float dotProduct(Vector3 v1, Vector3 v2);
+
+/* =============== Other Utility Functions =============== */
+
+/* Maps 'value' between 'min' and 'max' to a new value between 'nMin' and 'nMax' */
+float map(float value, float min, float max, float nMin, float nMax);
+
 #endif
