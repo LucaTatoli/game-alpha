@@ -9,7 +9,7 @@
 
 #define WINDOW_TITLE "Alpha"
 #define CELL_SIZE 0.25f
-#define TREES 0
+#define TREES 30
 
 typedef struct Tile {
 	Vector3 position;
@@ -186,11 +186,11 @@ Camera3D camera = {0};
 	const Vector3 cameraDirection = (Vector3) { 0.0f, -0.6f, -1.0f };
 	const float minCamHeight = 2.0f;
 #else
-	const Vector3 cameraDirection = (Vector3) { 0.0f, 0.0f, -1.0f };
-	const float minCamHeight = 0.5f;
+	const Vector3 cameraDirection = (Vector3) { 0.0f, -0.2f, -1.0f };
+	const float minCamHeight = 0.95f;
 #endif
-float cameraSpeed = 0.6f;
-float sprintSpeed = 1.2f;
+float cameraSpeed = 1.0f;
+float sprintSpeed = 2.0f;
 	
 Entity2D player = {
 	.position = (Vector3) { 0.0f, 0.15f, -0.8f },
@@ -273,19 +273,19 @@ int main(void)
 	
 	Grid *grid = createGrid(cols, rows, CELL_SIZE);
 	TileGrid *tileGrid = createTileGrid(cols, rows);
-	Image tileImage1 = LoadImage("res/snowygrass1.png");
+	Image tileImage1 = LoadImage("res/grass1.png");
 	ImageMipmaps(&tileImage1);
 	Texture2D tileTexture1 = LoadTextureFromImage(tileImage1);
 	UnloadImage(tileImage1);
-	Image tileImage2 = LoadImage("res/snowygrass2.png");
+	Image tileImage2 = LoadImage("res/grass2.png");
 	ImageMipmaps(&tileImage2);
 	Texture2D tileTexture2 = LoadTextureFromImage(tileImage2);
 	UnloadImage(tileImage2);
-	Image tileImage3 = LoadImage("res/snowygrass3.png");
+	Image tileImage3 = LoadImage("res/grass3.png");
 	ImageMipmaps(&tileImage3);
 	Texture2D tileTexture3 = LoadTextureFromImage(tileImage3);
 	UnloadImage(tileImage3);
-	Image tileImage4 = LoadImage("res/snowygrass4.png");
+	Image tileImage4 = LoadImage("res/grass4.png");
 	ImageMipmaps(&tileImage4);
 	Texture2D tileTexture4 = LoadTextureFromImage(tileImage4);
 	UnloadImage(tileImage4);
@@ -317,7 +317,7 @@ int main(void)
 		camera.position = (Vector3){
 	    	0.0f,
 		    minCamHeight,
-	        0.5f
+	        0.95f
 		};
 	#endif
 
@@ -334,7 +334,7 @@ int main(void)
 	Vector4 color = (Vector4) { 1.0f, 0.0f, 0.0f, 1.0f };
 
 	//Vector3 lightColor      = (Vector3) { 0, 0, 0 };
-	Vector3 lightColor      = (Vector3) { 0.3f, 0.3f, 0.3f };
+	Vector3 lightColor      = (Vector3) { 0.6f, 0.3f, 0.4f };
 	Vector3 ambient         = (Vector3) { 0.5f, 0.5f, 0.5f };
 	Vector3 localLightColor = (Vector3) { 0, 0, 0 };
 	//Vector3 localLightColor = (Vector3) { 0.3f, 0.3f, 0.3f };
@@ -357,7 +357,7 @@ int main(void)
 		};
 	}
 
-	Texture2D leavesTexture = LoadTexture("res/snowyleaves.png");
+	Texture2D leavesTexture = LoadTexture("res/leaves.png");
 
 	SetTextureFilter(tileTexture1, TEXTURE_FILTER_ANISOTROPIC_16X);
 	SetTextureFilter(tileTexture2, TEXTURE_FILTER_ANISOTROPIC_16X);
@@ -497,20 +497,7 @@ int main(void)
 		// DrawingBridge
 		
 		DrawModelEx(bridge, bridgePos, rotAxis, 0,  scale, WHITE);
-		/*DrawModelEx(bridge2, bridgePos2, rotAxis, 0,  scale, WHITE);*/
-		Mesh m = bridge2.meshes[0];
-		for(int i = 0; i < m.vertexCount; i+=3) {
-			Color color = { i * 10, 150, 150, 255 };
-			int i1 = (i + 0) * 3;
-			int i2 = (i + 1) * 3;
-			int i3 = (i + 2) * 3;
-			Vector3 b = bridgePos2;
-			Vector3 v1 = { m.vertices[i1] + b.x, m.vertices[i1+1] + b.y, m.vertices[i1+2] + b.z};
-			Vector3 v2 = { m.vertices[i2] + b.x, m.vertices[i2+1] + b.y, m.vertices[i2+2] + b.z};
-			Vector3 v3 = { m.vertices[i3] + b.x, m.vertices[i3+1] + b.y, m.vertices[i3+2] + b.z};
-			DrawTriangle3D(v1, v2, v3, color);
-		}
-		
+		DrawModelEx(bridge2, bridgePos2, rotAxis, 0,  scale, WHITE);
 		for(int i = 0; i < TREES; i++) {
 			DrawModelEx(tree, treePos[i], rotAxis, 0, scale, WHITE);
 			Box b = treeBody[i]->box;
@@ -552,7 +539,7 @@ int main(void)
 		BeginShaderMode(canvasShader);
 		DrawTexturePro(canvas.texture, source, dest, origin, 0, WHITE);
 		EndShaderMode();
-		DrawFPS(100, 100);
+		//DrawFPS(100, 100);
         EndDrawing();
 
 		handleInputs(aSprite);

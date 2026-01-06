@@ -4,6 +4,9 @@
 #include "raylib/src/raylib.h"
 #include <math.h>
 
+#define GROUND_ENTER_EPS 0
+#define GROUND_EXIT_EPS 0
+
 /* =============== Structs =============== */
 
 typedef enum {
@@ -34,6 +37,7 @@ typedef struct RigidBody {
 	Box box;
 	Mesh *mesh;
 	int meshCount;
+	float groundDistance;
 	int grounded;
 	/* This function pointer is the callback that will be called after a collision is detected
 	 * it returns the amount of displacement that the rigid body had been moved by after
@@ -49,6 +53,7 @@ typedef struct CollisionInfo {
 	Vector3 v1;
 	Vector3 v2;
 	Vector3 v3;
+	float groundDistance;
 } CollisionInfo;
 
 typedef struct World {

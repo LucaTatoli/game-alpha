@@ -20,6 +20,7 @@ RigidBody *createRigidBody(BodyType type, Vector3 position, Vector3 size) {
 	Vector3 minSize = (Vector3) { -size.x / 2, -size.y / 2, -size.z / 2 };
 	Vector3 maxSize = (Vector3) {  size.x / 2,  size.y / 2,  size.z / 2 };
 	r->box = createBox(minSize, maxSize, position);
+	r->groundDistance = position.y;
 	r->grounded = 1;
 
 	world.bodies[world.bodyCount++] = r;
@@ -37,6 +38,7 @@ RigidBody *createRigidBodyFromMesh(BodyType type, Mesh *mesh, int meshCount, Vec
 	r->mesh = mesh;
 	r->meshCount = meshCount;
 	r->pos = position;
+	r->groundDistance = position.y;
 	r->grounded = 1;
 
 	float minX =  FLT_MAX, minZ =  FLT_MAX, minY =  FLT_MAX;
@@ -120,6 +122,7 @@ void freeRigidBody(RigidBody *r) {
 void updateRigidBodyPosition(RigidBody *r, Vector3 pos) {
 	r->pos = pos;
 	for(int i = 0; i < 8; i++) r->box.vw[i] = Vector3Add(r->box.v[i], pos);
+	r->box.wCenter = Vector3Add(r->box.center, r->pos);
 }
 
 /* ============= Check Collision Functions =============  */
@@ -168,6 +171,26 @@ CollisionInfo collisionSATBoxAndComplexShape(RigidBody *a, RigidBody *b) {
 	CollisionInfo info;
 	info.baseLength = -1;
 	info.length = -1;
+	Ray dv1 = {
+		.position = { box->vw[0].x, box->wCenter.y, box->vw[0].z },
+		.direction = (Vector3) { 0, -1, 0 }
+	};
+	Ray dv2 = {
+		.position = { box->vw[3].x, box->wCenter.y, box->vw[3].z },
+		.direction = (Vector3) { 0, -1, 0 }
+	};
+	Ray dv3 = {
+		.position = { box->vw[4].x, box->wCenter.y, box->vw[4].z },
+		.direction = (Vector3) { 0, -1, 0 }
+	};
+	Ray dv4 = {
+		.position = { box->vw[7].x, box->wCenter.y, box->vw[7].z },
+		.direction = (Vector3) { 0, -1, 0 }
+	};
+	Ray dv5 = {
+		.position = { box->wCenter.x, box->wCenter.y, box->wCenter.z },
+		.direction = (Vector3) { 0, -1, 0 }
+	};
 	// loop through all triangles
 	for(int j = 0; j < b->meshCount; j++) {
 		float *vs = m[j].vertices;
@@ -176,6 +199,33 @@ CollisionInfo collisionSATBoxAndComplexShape(RigidBody *a, RigidBody *b) {
 			Vector3 v1 = (Vector3){ vs[i*3+0] + bP.x, vs[i*3+1] + bP.y, vs[i*3+2] + bP.z };
 			Vector3 v2 = (Vector3){ vs[i*3+3] + bP.x, vs[i*3+4] + bP.y, vs[i*3+5] + bP.z };
 			Vector3 v3 = (Vector3){ vs[i*3+6] + bP.x, vs[i*3+7] + bP.y, vs[i*3+8] + bP.z };
+
+			/* checking distance from floor */
+			RayCollision rayCollision1 = GetRayCollisionTriangle(dv1, v1, v2, v3);
+			RayCollision rayCollision2 = GetRayCollisionTriangle(dv2, v1, v2, v3);
+			RayCollision rayCollision3 = GetRayCollisionTriangle(dv3, v1, v2, v3);
+			RayCollision rayCollision4 = GetRayCollisionTriangle(dv4, v1, v2, v3);
+			RayCollision rayCollision5 = GetRayCollisionTriangle(dv5, v1, v2, v3);
+			if(rayCollision1.hit) {
+				a->groundDistance = rayCollision1.distance < a->groundDistance ? 
+									  rayCollision1.distance : a->groundDistance;
+			}
+			if(rayCollision2.hit) {
+				a->groundDistance = rayCollision2.distance < a->groundDistance ? 
+									  rayCollision2.distance : a->groundDistance;
+			}
+			if(rayCollision3.hit) {
+				a->groundDistance = rayCollision3.distance < a->groundDistance ? 
+									  rayCollision3.distance : a->groundDistance;
+			}
+			if(rayCollision4.hit) {
+				a->groundDistance = rayCollision4.distance < a->groundDistance ? 
+									  rayCollision4.distance : a->groundDistance;
+			}
+			if(rayCollision5.hit) {
+				a->groundDistance = rayCollision5.distance < a->groundDistance ? 
+									  rayCollision5.distance : a->groundDistance;
+			}
 	
 			// triangle sides
 			Vector3 lt1 = Vector3Subtract(v2, v1);
@@ -234,6 +284,7 @@ CollisionInfo collisionSATBoxAndComplexShape(RigidBody *a, RigidBody *b) {
 			
 			Vector3 tCenter = Vector3Scale(Vector3Add(Vector3Add(v1, v2), v3), 1.0f/3.0f);
 			Vector3 dir = Vector3Subtract(box->wCenter, tCenter);
+
 			if(dotProduct(dir, collAxis) > 0 && (info.length == -1 || info.length > collLength)) {
 				info.v1 = v1;
 				info.v2 = v2;
@@ -241,8 +292,9 @@ CollisionInfo collisionSATBoxAndComplexShape(RigidBody *a, RigidBody *b) {
 				info.length = collLength;
 				info.direction = collAxis;
 			}
-		
-			printf("==================================\n");
+
+			/*
+	   		printf("==================================\n");
 			printf("Colliding with triangle\n");
 			printf("V1 (%f, %f, %f)\n", v1.x, v1.y, v1.z);
 			printf("V2 (%f, %f, %f)\n", v2.x, v2.y, v2.z);
@@ -259,7 +311,8 @@ CollisionInfo collisionSATBoxAndComplexShape(RigidBody *a, RigidBody *b) {
 			printf("B (%f, %f, %f)\n", box->wCenter.x, box->wCenter.y, box->wCenter.z);
 			printf("Tri center\n");
 			printf("T (%f, %f, %f)\n", tCenter.x, tCenter.y, tCenter.z);
-
+			printf("Ground distance: %f\n", info.groundDistance);
+			*/
 			
 			noCollisionFound: 
 			continue;
@@ -354,18 +407,16 @@ void handleCollision(RigidBody *a, RigidBody *b, CollisionInfo i, float frameTim
 		a->pos = Vector3Add(a->pos, dir);
 		b->pos = Vector3Subtract(b->pos, dir);
 	}
-
-	Vector3 offset = Vector3Scale(i.direction, i.length);
+	
+	Vector3 upNormal = { 0, i.direction.y, 0 };
+	Vector3 offset = Vector3Scale(upNormal, i.length);
 	if(b->type == RIGID_FIXED) {
 		// axis are already normalized, so I don't need to divide by the axis length
 		float slopeAngle = dotProduct(i.direction, upVector);
 		
-		//if(slopeAngle > maxSlope) printf("Slope is walkable!\n"); 
-		//else				 printf("Can't walk up this slope!\n");
+		if(slopeAngle < maxSlope) offset = Vector3Scale(Vector3Normalize(a->vel), -i.length); 
 
-		a->pos = Vector3Add(a->pos, offset);
-		for(int i = 0; i < 8; i++) a->box.vw[i] = Vector3Add(a->box.v[i], a->pos);
-		a->box.wCenter = Vector3Add(a->box.center, a->pos);
+		updateRigidBodyPosition(a, Vector3Add(a->pos, offset));
 	}
 	else { 
 		float slopeDir = dotProduct(b->vel, i.baseDirection);
@@ -385,32 +436,32 @@ void updateWorld(float frameTime) {
 		RigidBody *r = world.bodies[b];
 		
 		if(r->type == RIGID_FIXED || r->type == PHANTOM) continue;
-
-		if(!r->grounded && r->pos.y >= 0.15f)
+	
+		printf("GROUND DISTANCE: %f\n", r->groundDistance);
+		if(!r->grounded)
 			r->vel.y -= world.gravity;
-		
+		printf("VELOCITY: (%f, %f, %f)\n", r->vel.x, r->vel.y, r->vel.z);	
 		Vector3 vel = Vector3Scale(r->vel, frameTime);
-		r->pos = Vector3Add(r->pos, vel);
-		for(int i = 0; i < 8; i++) r->box.vw[i] = Vector3Add(r->box.v[i], r->pos);
-		r->box.wCenter = Vector3Add(r->box.center, r->pos);
+		updateRigidBodyPosition(r, Vector3Add(r->pos, vel));
 	}
 
 	// check collisions
 	for(int i = 0; i < world.bodyCount-1; i++) {
 		RigidBody *a = world.bodies[i];
-		a->grounded = 0;
-		
+		a->groundDistance = a->pos.y;
 		if(a->type == RIGID_FIXED || a->type == PHANTOM) continue;
 		
 		for(int y = i+1; y < world.bodyCount; y++) {
 			RigidBody *b = world.bodies[y];
 			CollisionInfo info = checkCollision(a,b);
-			if(info.length > 0) {
-				handleCollision(a, b, info, frameTime);
-				a->grounded = 1;
-			}
+			if(info.length > 0)	handleCollision(a, b, info, frameTime);
 		}
+		if(!a->grounded && a->groundDistance <= a->box.v[1].y + GROUND_ENTER_EPS)
+			a->grounded = 1;
+		else if(a->grounded && a->groundDistance > a->box.v[1].y + GROUND_EXIT_EPS)
+			a->grounded = 0;
 	}
+
 
 }
 
