@@ -9,8 +9,7 @@
 
 #define WINDOW_TITLE "Alpha"
 #define CELL_SIZE 0.25f
-#define TREES 30
-#define GRAVITY 4
+#define TREES 0
 
 typedef struct Tile {
 	Vector3 position;
@@ -185,8 +184,10 @@ void setTileInTileGrid(TileGrid *grid, Tile *tile, int x, int y) {
 Camera3D camera = {0};
 #if ISOMETRIC
 	const Vector3 cameraDirection = (Vector3) { 0.0f, -0.6f, -1.0f };
+	const float minCamHeight = 2.0f;
 #else
 	const Vector3 cameraDirection = (Vector3) { 0.0f, 0.0f, -1.0f };
+	const float minCamHeight = 0.5f;
 #endif
 float cameraSpeed = 0.6f;
 float sprintSpeed = 1.2f;
@@ -201,13 +202,13 @@ RigidBody *bridgeBody2;
 RigidBody *treeBody[TREES];
 
 void handleInputs(AnimatedSprite *a) {
-	float frameTime = GetFrameTime();
-	float speed = cameraSpeed * frameTime;
+	float speed = cameraSpeed;
+
 
 	Vector3 speedV = (Vector3) { .x = .0f, .y = .0f, .z = .0f };
 	if(IsKeyDown(KEY_LEFT_SHIFT)) {
-		speed = sprintSpeed * frameTime;
-		a->frameTimer += frameTime;
+		speed = sprintSpeed;
+		a->frameTimer += GetFrameTime();
 	}
 	player.body->vel = speedV;
 	if(IsKeyDown(KEY_W)) {
@@ -231,56 +232,6 @@ void handleInputs(AnimatedSprite *a) {
 	}
 
 	player.body->vel = speedV;
-	camera.position  = Vector3Add(camera.position, speedV);
-	player.position  = Vector3Add(player.position, speedV);
-	Vector3 oldPos = player.body->pos;
-	updateRigidBodyPosition(player.body, Vector3Add(player.body->pos, speedV));
-	int hasCollided = 0;
-	for(int i = 0; i < TREES; i++) {
-		int collision = checkCollisionAABB(player.body, treeBody[i]);
-		if(collision == 1 && checkCollision(player.body, treeBody[i]))  {
-			//camera.position  = Vector3Subtract(camera.position, speedV);
-			//player.position  = Vector3Subtract(player.position, speedV);
-			//updateRigidBodyPosition(player.body, oldPos);
-			Vector3 diffPos = Vector3Subtract(player.body->pos, player.position);
-			camera.position = Vector3Add(camera.position, diffPos);
-			player.position = player.body->pos;
-			hasCollided = 1;
-			
-		}
-	}
-	int collision = checkCollisionAABB(player.body, bridgeBody);
-	if(collision == 1 && checkCollision(player.body, bridgeBody))  {
-		//camera.position  = Vector3Subtract(camera.position, speedV);
-		//player.position  = Vector3Subtract(player.position, speedV);
-		//updateRigidBodyPosition(player.body, oldPos);
-		Vector3 diffPos = Vector3Subtract(player.body->pos, player.position);
-		camera.position = Vector3Add(camera.position, diffPos);
-		player.position = player.body->pos;
-		hasCollided = 1;
-	}
-	
-	collision = checkCollisionAABB(player.body, bridgeBody2);
-	if(collision == 1 && checkCollision(player.body, bridgeBody2))  {
-		//camera.position  = Vector3Subtract(camera.position, speedV);
-		//player.position  = Vector3Subtract(player.position, speedV);
-		//updateRigidBodyPosition(player.body, oldPos);
-		Vector3 diffPos = Vector3Subtract(player.body->pos, player.position);
-		camera.position = Vector3Add(camera.position, diffPos);
-		player.position = player.body->pos;
-		hasCollided = 1;
-	}
-
-	if(!hasCollided) {
-		// update player position by graviy
-		float nPlayerY = fmax(player.position.y - GRAVITY * frameTime, 0.15f);
-		float diff = player.position.y - nPlayerY;
-		camera.position.y -= diff; 
-		player.position.y = nPlayerY;
-		updateRigidBodyPosition(player.body, player.position);
-		
-	}
-	camera.target = Vector3Add(cameraDirection, camera.position);
 	
 	if(IsKeyPressed(KEY_F1)) ToggleFullscreen();
 }
@@ -293,7 +244,7 @@ Entity createEntity(Texture2D texture, Vector3 pos, Vector3 size) {
 		};
 		e.color = WHITE;
 		Mesh mesh = GenMeshCube(e.size.x, e.size.y, e.size.z);
-		e.body = createRigidBodyFromMesh(RIGID, &mesh, 1, pos);
+		//e.body = createRigidBodyFromMesh(RIGID, &mesh, 1, pos);
 		e.model = LoadModelFromMesh(mesh);
 		e.model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = texture;
 		return e;
@@ -359,13 +310,13 @@ int main(void)
 	#if ISOMETRIC
 	 	camera.position = (Vector3){
     		0.0f,
-		    2.0f,
+		    minCamHeight,
 	        1.5f
 		};
 	#else
 		camera.position = (Vector3){
 	    	0.0f,
-		    0.5f,
+		    minCamHeight,
 	        0.5f
 		};
 	#endif
@@ -441,17 +392,38 @@ int main(void)
 	bridge.materials[0].shader = lightFSShader;
 	Texture bridgeTexture = LoadTexture("res/objs/stone.jpg");
 	bridge.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = bridgeTexture;
-	Vector3 bridgePos = (Vector3){ 0, 0.88f, -4.0f };
+	Vector3 bridgePos = (Vector3){ -2.0f, 0, -9.0f };
 	bridgeBody = createRigidBodyFromMesh(RIGID_FIXED, bridge.meshes, bridge.meshCount, bridgePos);
+	bridgePos.y = 0 - bridgeBody->box.v[0].y - 0.55f;
+	updateRigidBodyPosition(bridgeBody, bridgePos);
 	
 	Model bridge2 = LoadModel("res/objs/bridge2.obj");
 	Material *bridgeMaterial2 = LoadMaterials("res/objs/bridge2.mtl", &bridge2.materialCount);
 	bridge2.materials[0] = bridgeMaterial2[0];
 	bridge2.materials[0].shader = lightFSShader;
 	bridge2.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = bridgeTexture;
-	Vector3 bridgePos2 = (Vector3){ -2.0f, 1.30f, -9.0f };
+	Vector3 bridgePos2 = (Vector3){ 0, 0, -4.0f }; 
 	bridgeBody2 = createRigidBodyFromMesh(RIGID_FIXED, bridge2.meshes, bridge2.meshCount, bridgePos2);
+	bridgePos2.y = 0 - bridgeBody2->box.v[0].y - 0.01f;
+	updateRigidBodyPosition(bridgeBody2, bridgePos2);
+
+	/* DEBUG 
+	Mesh m = bridge2.meshes[0];
+	printf("Cube vertices\n");
+	for(int i = 0; i < m.vertexCount; i++) {
+		printf("%d - x: %f y: %f z: %f\n",
+				i,
+				m.vertices[i  ],
+				m.vertices[i+1],
+				m.vertices[i+2]);
+	}
+	printf("Cube indices\n");
+	for(int i = 0; i < m.vertexCount; i++) {
+		printf("%d\n", m.indices[i  ]);
+	}
 	
+	return 0;
+	 DEBUG */
 	Model tree= LoadModel("res/objs/tree.obj");
 	printf("Model loaded\n");
 	for(int i = 0; i < tree.materialCount; i++) tree.materials[i].shader = lightFSShader;
@@ -468,21 +440,22 @@ int main(void)
 		tPos.y = treePos[i].y;
 		updateRigidBodyPosition(treeBody[i], tPos);
 
-		if(checkCollisionAABB(bridgeBody, treeBody[i]) || checkCollisionAABB(bridgeBody2, treeBody[i])) {
+		if(checkCollisionAABB(bridgeBody, treeBody[i]).baseLength > 0 || checkCollisionAABB(bridgeBody2, treeBody[i]).baseLength > 0) {
 			freeRigidBody(treeBody[i]);
 			i--;
+			continue;
 		}
 		for(int j = 0; j < i; j++) {
-			if(checkCollisionAABB(treeBody[i], treeBody[j])) {
+			if(checkCollisionAABB(treeBody[i], treeBody[j]).baseLength > 0) {
 				freeRigidBody(treeBody[i]);
 				i--;
 				break;
-				
 			}
 		}
 	}
+
 	// Christmas snowflakes
-	int flakes = 4000;
+	int flakes = 0;
 	Entity *snow = malloc(sizeof(*snow)*flakes);
 	Vector3 *dirs = malloc(sizeof(*dirs)*flakes) ;
 	Texture2D snowTexture = LoadTexture("res/snow.png");
@@ -524,7 +497,19 @@ int main(void)
 		// DrawingBridge
 		
 		DrawModelEx(bridge, bridgePos, rotAxis, 0,  scale, WHITE);
-		DrawModelEx(bridge2, bridgePos2, rotAxis, 0,  scale, WHITE);
+		/*DrawModelEx(bridge2, bridgePos2, rotAxis, 0,  scale, WHITE);*/
+		Mesh m = bridge2.meshes[0];
+		for(int i = 0; i < m.vertexCount; i+=3) {
+			Color color = { i * 10, 150, 150, 255 };
+			int i1 = (i + 0) * 3;
+			int i2 = (i + 1) * 3;
+			int i3 = (i + 2) * 3;
+			Vector3 b = bridgePos2;
+			Vector3 v1 = { m.vertices[i1] + b.x, m.vertices[i1+1] + b.y, m.vertices[i1+2] + b.z};
+			Vector3 v2 = { m.vertices[i2] + b.x, m.vertices[i2+1] + b.y, m.vertices[i2+2] + b.z};
+			Vector3 v3 = { m.vertices[i3] + b.x, m.vertices[i3+1] + b.y, m.vertices[i3+2] + b.z};
+			DrawTriangle3D(v1, v2, v3, color);
+		}
 		
 		for(int i = 0; i < TREES; i++) {
 			DrawModelEx(tree, treePos[i], rotAxis, 0, scale, WHITE);
@@ -567,6 +552,7 @@ int main(void)
 		BeginShaderMode(canvasShader);
 		DrawTexturePro(canvas.texture, source, dest, origin, 0, WHITE);
 		EndShaderMode();
+		DrawFPS(100, 100);
         EndDrawing();
 
 		handleInputs(aSprite);
@@ -579,7 +565,13 @@ int main(void)
 			snow[i].position.z += dirs[i].z * frameTime;	
 			if(snow[i].position.y < 0) snow[i].position.y = snowInitialY;
 		}
-		
+
+		// update physic simulation
+		updateWorld(frameTime);
+		Vector3 diff = Vector3Subtract(player.position, player.body->pos);
+		player.position = player.body->pos; 
+		camera.position = Vector3Subtract(camera.position, diff);
+		camera.target = Vector3Add(cameraDirection, camera.position);
     }
 
 	UnloadShader(lightFSShader);
